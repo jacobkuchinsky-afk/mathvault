@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Search, Plus, Download, Upload, SlidersHorizontal, X, Moon, Sun, Folder, FolderPlus, LayoutList, LayoutGrid, BookOpen } from "lucide-react";
+import { Search, Plus, Download, Upload, SlidersHorizontal, X, Moon, Sun, Folder, LayoutList, LayoutGrid, BookOpen } from "lucide-react";
 import { MathProvider } from "@/components/MathRenderer";
 import NoteEditor from "@/components/NoteEditor";
 import NoteCard from "@/components/NoteCard";
 import LatexReference from "@/components/LatexReference";
+import SyncSettings from "@/components/SyncSettings";
 import {
   MathNote, loadNotes, saveNotes, exportNotes, searchNotes, CATEGORIES,
   loadCollections, saveCollections, loadPrefs, savePrefs, Prefs,
 } from "@/lib/store";
+import { getGistConfig, saveGistConfig, syncNotes } from "@/lib/gist-sync";
 
 type View = "list" | "editor";
 
@@ -26,13 +28,47 @@ export default function Home() {
   const [showReference, setShowReference] = useState(false);
   const [collections, setCollections] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<number | null>(null);
+  const [gistConnected, setGistConnected] = useState(false);
 
   useEffect(() => {
-    setNotes(loadNotes());
+    const localNotes = loadNotes();
+    setNotes(localNotes);
     setCollections(loadCollections());
     setPrefs(loadPrefs());
+    setGistConnected(!!getGistConfig()?.token);
     setLoaded(true);
+
+    const defaultGistId = process.env.NEXT_PUBLIC_DEFAULT_GIST_ID;
+    if (defaultGistId && !localStorage.getItem("mathvault_gist_id")) {
+      localStorage.setItem("mathvault_gist_id", defaultGistId);
+    }
+
+    const config = getGistConfig();
+    if (config?.token && config?.gistId) {
+      doSync(localNotes);
+    }
   }, []);
+
+  async function doSync(currentNotes?: MathNote[]) {
+    const config = getGistConfig();
+    if (!config?.token) return;
+    setSyncing(true);
+    try {
+      const result = await syncNotes(config.token, config.gistId, currentNotes || notes);
+      if (result.gistId !== config.gistId) {
+        saveGistConfig(config.token, result.gistId);
+      }
+      setNotes(result.notes);
+      setGistConnected(true);
+      setLastSync(Date.now());
+    } catch (err) {
+      console.error("Sync failed:", err);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   useEffect(() => {
     if (!loaded) return;
@@ -100,13 +136,16 @@ export default function Home() {
   }, []);
 
   function handleSave(note: MathNote) {
+    let updated: MathNote[] = [];
     setNotes((prev) => {
       const idx = prev.findIndex((n) => n.id === note.id);
-      if (idx >= 0) { const u = [...prev]; u[idx] = note; return u; }
-      return [note, ...prev];
+      if (idx >= 0) { updated = [...prev]; updated[idx] = note; }
+      else { updated = [note, ...prev]; }
+      return updated;
     });
     setView("list");
     setEditingNote(null);
+    if (gistConnected) setTimeout(() => doSync(updated), 500);
   }
 
   function handleDelete(id: string) {
@@ -172,6 +211,12 @@ export default function Home() {
               </p>
             </div>
             <div className="flex items-center gap-1.5">
+              <SyncSettings
+                onSync={() => doSync()}
+                syncing={syncing}
+                lastSync={lastSync}
+                connected={gistConnected}
+              />
               <button
                 onClick={() => setShowReference(!showReference)}
                 className={`p-2 rounded-lg transition-colors ${showReference ? "bg-accent/10 text-accent" : "text-muted hover:text-ink hover:bg-paper-dark"}`}

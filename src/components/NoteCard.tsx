@@ -1,9 +1,27 @@
 "use client";
 
-import { Pencil, Trash2, Copy, Clock, Pin, Folder, Check } from "lucide-react";
+import { Pencil, Trash2, Copy, Clock, Pin, Folder, Check, ExternalLink } from "lucide-react";
 import { MathBlock, RichText } from "./MathRenderer";
 import { MathNote } from "@/lib/store";
 import { useState } from "react";
+
+function extractInlineEquations(text: string): string[] {
+  const matches = text.match(/\$([^$]+)\$/g);
+  if (!matches) return [];
+  return matches.map((m) => m.slice(1, -1));
+}
+
+function getAllEquations(note: MathNote): { label: string; latex: string }[] {
+  const eqs: { label: string; latex: string }[] = [];
+  if (note.latex) {
+    eqs.push({ label: "Main", latex: note.latex });
+  }
+  const inline = extractInlineEquations(note.notes);
+  inline.forEach((eq, i) => {
+    eqs.push({ label: `Inline ${i + 1}`, latex: eq });
+  });
+  return eqs;
+}
 
 interface NoteCardProps {
   note: MathNote;
@@ -14,12 +32,32 @@ interface NoteCardProps {
 }
 
 export default function NoteCard({ note, onEdit, onDelete, onTogglePin, compact }: NoteCardProps) {
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showEqMenu, setShowEqMenu] = useState(false);
 
-  function copyLatex() {
-    navigator.clipboard.writeText(note.latex);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const allEquations = getAllEquations(note);
+  const hasMultiple = allEquations.length > 1;
+
+  function copyTex(latex: string, id: string) {
+    navigator.clipboard.writeText(latex);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+    setShowEqMenu(false);
+  }
+
+  function copyMathJax(latex: string, id: string) {
+    navigator.clipboard.writeText(`$$${latex}$$`);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+    setShowEqMenu(false);
+  }
+
+  function openDesmos(latex: string) {
+    navigator.clipboard.writeText(latex);
+    window.open("https://www.desmos.com/calculator", "_blank");
+    setCopiedId("desmos");
+    setTimeout(() => setCopiedId(null), 2000);
+    setShowEqMenu(false);
   }
 
   const timeAgo = getTimeAgo(note.updatedAt);
@@ -82,13 +120,65 @@ export default function NoteCard({ note, onEdit, onDelete, onTogglePin, compact 
           >
             <Pin size={14} />
           </button>
-          <button
-            onClick={copyLatex}
-            className="p-1.5 text-muted hover:text-ink hover:bg-paper-dark rounded-md transition-colors"
-            title="Copy LaTeX"
-          >
-            {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
-          </button>
+
+          {/* Copy / Desmos menu */}
+          <div className="relative">
+            <button
+              onClick={() => hasMultiple ? setShowEqMenu(!showEqMenu) : copyTex(note.latex, "main")}
+              className="p-1.5 text-muted hover:text-ink hover:bg-paper-dark rounded-md transition-colors"
+              title={hasMultiple ? "Copy equations" : "Copy LaTeX"}
+            >
+              {copiedId ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+            </button>
+
+            {showEqMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowEqMenu(false)} />
+                <div className="absolute right-0 top-8 z-20 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[220px] fade-in">
+                  {allEquations.map((eq, i) => (
+                    <div key={i} className="border-b border-border/50 last:border-0">
+                      <div className="px-3 py-1.5 text-[11px] text-muted font-medium uppercase tracking-wider">
+                        {eq.label}: <span className="font-mono normal-case text-ink/70">{eq.latex.length > 25 ? eq.latex.substring(0, 25) + "..." : eq.latex}</span>
+                      </div>
+                      <div className="flex px-2 pb-1.5 gap-1">
+                        <button
+                          onClick={() => copyTex(eq.latex, `tex-${i}`)}
+                          className="flex-1 text-xs px-2 py-1 text-muted hover:text-ink hover:bg-paper-dark rounded transition-colors text-left"
+                        >
+                          Copy LaTeX
+                        </button>
+                        <button
+                          onClick={() => copyMathJax(eq.latex, `mj-${i}`)}
+                          className="flex-1 text-xs px-2 py-1 text-muted hover:text-ink hover:bg-paper-dark rounded transition-colors text-left"
+                        >
+                          Copy MathJax
+                        </button>
+                        <button
+                          onClick={() => openDesmos(eq.latex)}
+                          className="text-xs px-2 py-1 text-muted hover:text-ink hover:bg-paper-dark rounded transition-colors flex items-center gap-1"
+                        >
+                          <ExternalLink size={10} />
+                          Desmos
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Desmos button (shown when single equation) */}
+          {!hasMultiple && note.latex && (
+            <button
+              onClick={() => openDesmos(note.latex)}
+              className="p-1.5 text-muted hover:text-ink hover:bg-paper-dark rounded-md transition-colors"
+              title="Open in Desmos (copies equation)"
+            >
+              {copiedId === "desmos" ? <Check size={14} className="text-success" /> : <ExternalLink size={14} />}
+            </button>
+          )}
+
           <button
             onClick={() => onEdit(note)}
             className="p-1.5 text-muted hover:text-ink hover:bg-paper-dark rounded-md transition-colors"
