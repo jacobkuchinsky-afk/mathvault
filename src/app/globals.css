@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ink: #1a1a1a;
+  --color-paper: #faf9f6;
+  --color-paper-dark: #f0eee9;
+  --color-accent: #c45d3e;
+  --color-accent-light: #e8a490;
+  --color-accent-dark: #9e3a20;
+  --color-muted: #8a8580;
+  --color-border: #ddd8d0;
+  --color-card: #ffffff;
+  --color-tag-bg: #f0eee9;
+  --color-tag-text: #6b6560;
+  --color-success: #4a8c5c;
+  --color-danger: #c45d3e;
+
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-serif: "Lora", ui-serif, Georgia, serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@font-face {
+  font-family: "Source Sans 3";
+  src: url("https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300..900;1,300..900&display=swap");
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-light);
+  color: var(--color-ink);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+.equation-input {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.note-card {
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.note-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-highlight {
+  background: var(--color-accent-light);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+mjx-container {
+  font-size: 110% !important;
 }
