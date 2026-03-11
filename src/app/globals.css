@@ -30,6 +30,26 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.dark body,
+html.dark body {
+  --color-ink: #e8e4df;
+  --color-paper: #1a1916;
+  --color-paper-dark: #232220;
+  --color-accent: #d4724e;
+  --color-accent-light: #7a3d27;
+  --color-accent-dark: #e8a490;
+  --color-muted: #8a8580;
+  --color-border: #333028;
+  --color-card: #222019;
+  --color-tag-bg: #2a2825;
+  --color-tag-text: #9a958f;
+  --color-success: #5da06e;
+  --color-danger: #d4724e;
+  background: var(--color-paper);
+  color: var(--color-ink);
 }
 
 ::selection {
