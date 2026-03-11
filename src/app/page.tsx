@@ -37,13 +37,13 @@ export default function Home() {
     setNotes(localNotes);
     setCollections(loadCollections());
     setPrefs(loadPrefs());
+    const defaultGistId = process.env.NEXT_PUBLIC_DEFAULT_GIST_ID;
+    const defaultToken = process.env.NEXT_PUBLIC_DEFAULT_GIST_TOKEN;
+    if (defaultGistId) localStorage.setItem("mathvault_gist_id", defaultGistId);
+    if (defaultToken) localStorage.setItem("mathvault_gist_token", defaultToken);
+
     setGistConnected(!!getGistConfig()?.token);
     setLoaded(true);
-
-    const defaultGistId = process.env.NEXT_PUBLIC_DEFAULT_GIST_ID;
-    if (defaultGistId && !localStorage.getItem("mathvault_gist_id")) {
-      localStorage.setItem("mathvault_gist_id", defaultGistId);
-    }
 
     const config = getGistConfig();
     if (config?.token && config?.gistId) {
